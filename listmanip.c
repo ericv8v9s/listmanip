@@ -62,7 +62,7 @@ static char *clone(const char *source) {
 #define FAIL_IF(cond, msg) do { \
 	if (cond) { \
 		fputs((msg), stderr); \
-					exit(EXIT_FAILURE); \
+		exit(EXIT_FAILURE); \
 	} \
 } while (0);
 

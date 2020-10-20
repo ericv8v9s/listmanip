@@ -15,7 +15,7 @@ second
 third
 one thing
 another thing
-$ example.list pop 2
+$ listmanip example.list pop 2
 first
 second
 $ cat example.list
