@@ -21,7 +21,8 @@ enum action {
 	INVALID,
 	PUSH, POP,
 	ADD, INSERT,
-	REMOVE, REMOVE_LAST
+	REMOVE, REMOVE_LAST,
+	ROTATE_H, ROTATE_T
 };
 
 struct insert_args {
@@ -49,6 +50,8 @@ static void dump_usage() {
 		"    pop [COUNT]: remove the first COUNT entries, default to 1\n"
 		"    rm [INDEX]: remove last or by index\n"
 		"    rmlast [COUNT]: remove the last COUNT entries, default to 1\n"
+		"    roth: remove and output the first entry, append it to the end\n"
+		"    rott: remove and output the last entry, insert it at the start\n"
 		, stderr);
 }
 
@@ -127,6 +130,12 @@ static struct command parse_command_line(int argc, char **argv) {
 				*((size_t *) cmd.args) = str_to_non_neg(argv[i]);
 			}
 		}
+		else if (OP("roth")) {
+			cmd.action = ROTATE_H;
+		}
+		else if (OP("rott")) {
+			cmd.action = ROTATE_T;
+		}
 		else if (i == 1)
 			cmd.filename = argv[1];
 		else break;
@@ -180,6 +189,7 @@ int main(int argc, char **argv) {
 	if (input)
 		lines = read_lines(input);
 	else {
+		// missing file will be created
 		if (errno != ENOENT) goto handle_error;
 		lines = blot_LinkedList_new();
 	}
@@ -243,6 +253,20 @@ int main(int argc, char **argv) {
 			}
 		} break;
 
+		case ROTATE_H: {
+			if (lines->length == 0) break;
+			char *line = blot_LinkedList_remove_at(lines, 0);
+			blot_LinkedList_add(lines, line);
+			puts(line);
+		} break;
+
+		case ROTATE_T: {
+			if (lines->length == 0) break;
+			char *line = blot_LinkedList_remove_at(lines, lines->length-1);
+			blot_LinkedList_insert(lines, line, 0);
+			puts(line);
+		} break;
+
 		case INVALID: goto handle_error;
 	}
 
@@ -252,7 +276,7 @@ int main(int argc, char **argv) {
 		output = fopen(cmd.filename, "w");
 
 	for (struct blot_LinkedListNode *node = lines->head; node; node = node->next) {
-    	fputs(node->val, output);
+		fputs(node->val, output);
 		fputc('\n', output);
 	}
 
