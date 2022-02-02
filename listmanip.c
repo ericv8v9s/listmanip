@@ -17,26 +17,26 @@ this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 #include <errno.h>
 
 
-typedef enum {
+enum action {
 	INVALID,
 	PUSH, POP,
 	ADD, INSERT,
 	REMOVE, REMOVE_LAST
-} Action;
+};
 
-struct InsertArgs {
+struct insert_args {
 	size_t index;
 	char *entry;
 };
 
-typedef struct {
+struct command {
 	char *filename;
-	Action action;
+	enum action action;
 	void *args;
-} Command;
+};
 
 
-static void dumpUsage() {
+static void dump_usage() {
 	fputs(
 		"Usage: listmanip [FILE] ACTION\n"
 		"  FILE\n"
@@ -66,7 +66,7 @@ static char *clone(const char *source) {
 	} \
 } while (0);
 
-static size_t strToNonNeg(char *s) {
+static size_t str_to_non_neg(char *s) {
 	errno = 0;
 	long int n = strtol(s, NULL, 10);
 	FAIL_IF(errno || n < 0, "Invalid number\n");
@@ -77,54 +77,54 @@ static size_t strToNonNeg(char *s) {
 /**
  * Parses argc and argv to extract the input filename and action.
  * Checks if arguments are valid. Wraps extracted information into
- * a Command.
+ * a command struct.
  */
-static Command parseCommandLine(int argc, char **argv) {
+static struct command parse_command_line(int argc, char **argv) {
 
 	if (argc < 2) {
-		dumpUsage();
+		dump_usage();
 		FAIL_IF(1, "Insufficient arguments\n");
 	}
 
-	Command cmd = { .action = INVALID };
+	struct command cmd = { .action = INVALID };
 
 	for (size_t i = 1; cmd.action == INVALID && i < argc; ++i) {
-		#define e(a, b) ( strcmp((a), (b)) == 0 )
-		if (e(argv[i], "push")) {
+		#define OP(s) ( strcmp(argv[i], (s)) == 0 )
+		if (OP("push")) {
 			cmd.action = PUSH;
 			cmd.args = &argv[i+1];
 		}
-		else if (e(argv[i], "add")) {
+		else if (OP("add")) {
 			cmd.action = ADD;
 			cmd.args = &argv[i+1];
 		}
-		else if (e(argv[i], "insert")) {
+		else if (OP("insert")) {
 			cmd.action = INSERT;
 			FAIL_IF(argc - (i+1) < 2, "Insufficient arguments\n");
-			struct InsertArgs *insArgs = cmd.args =
-					malloc(sizeof (struct InsertArgs));
-			insArgs->index = strToNonNeg(argv[++i]);
-			insArgs->entry = argv[++i];
+			struct insert_args *ins_args = cmd.args =
+					malloc(sizeof (struct insert_args));
+			ins_args->index = str_to_non_neg(argv[++i]);
+			ins_args->entry = argv[++i];
 		}
-		else if (e(argv[i], "pop")) {
+		else if (OP("pop")) {
 			cmd.action = POP;
 			if (argv[++i]) {
 				cmd.args = malloc(sizeof (size_t));
-				*((size_t *) cmd.args) = strToNonNeg(argv[i]);
+				*((size_t *) cmd.args) = str_to_non_neg(argv[i]);
 			}
 		}
-		else if (e(argv[i], "rm")) {
+		else if (OP("rm")) {
 			cmd.action = REMOVE;
 			if (argv[++i]) {
 				cmd.args = malloc(sizeof (size_t));
-				*((size_t *) cmd.args) = strToNonNeg(argv[i]);
+				*((size_t *) cmd.args) = str_to_non_neg(argv[i]);
 			}
 		}
-		else if (e(argv[i], "rmlast")) {
+		else if (OP("rmlast")) {
 			cmd.action = REMOVE_LAST;
 			if (argv[++i]) {
 				cmd.args = malloc(sizeof (size_t));
-				*((size_t *) cmd.args) = strToNonNeg(argv[i]);
+				*((size_t *) cmd.args) = str_to_non_neg(argv[i]);
 			}
 		}
 		else if (i == 1)
@@ -134,7 +134,7 @@ static Command parseCommandLine(int argc, char **argv) {
 	}
 
 	if (cmd.action == INVALID) {
-		dumpUsage();
+		dump_usage();
 		FAIL_IF(1, "Invalid operation\n");
 	}
 
@@ -143,7 +143,7 @@ static Command parseCommandLine(int argc, char **argv) {
 #undef FAIL_IF
 
 
-static struct blot_LinkedList* readLines(FILE *input) {
+static struct blot_LinkedList* read_lines(FILE *input) {
 	struct blot_LinkedList *lines = blot_LinkedList_new();
 
 	struct {
@@ -171,16 +171,16 @@ int main(int argc, char **argv) {
 	FILE *output = NULL;
 
 	errno = 0;
-	Command cmd = parseCommandLine(argc, argv);
-	if (errno) goto handleError;
+	struct command cmd = parse_command_line(argc, argv);
+	if (errno) goto handle_error;
 
 	FILE *input = stdin;
 	if (cmd.filename)
 		input = fopen(cmd.filename, "r");
 	if (input)
-		lines = readLines(input);
+		lines = read_lines(input);
 	else {
-		if (errno != ENOENT) goto handleError;
+		if (errno != ENOENT) goto handle_error;
 		lines = blot_LinkedList_new();
 	}
 
@@ -199,8 +199,8 @@ int main(int argc, char **argv) {
 		} break;
 
 		case INSERT: {
-			struct InsertArgs *args = cmd.args;
-			if (args->index > lines->length) goto handleError;
+			struct insert_args *args = cmd.args;
+			if (args->index > lines->length) goto handle_error;
 			blot_LinkedList_insert(lines, clone(args->entry), args->index);
 			free(args);
 		} break;
@@ -211,22 +211,22 @@ int main(int argc, char **argv) {
 				count = *((size_t *) cmd.args);
 				free(cmd.args);
 			}
-			if (count > lines->length) goto handleError;
+			if (count > lines->length) goto handle_error;
 			for (size_t i = 0; i < count; ++i) {
-				char *line = blot_LinkedList_removeAt(lines, 0);
+				char *line = blot_LinkedList_remove_at(lines, 0);
 				puts(line); free(line);
 			}
 		} break;
 
 		case REMOVE: {
-			if (lines->length == 0) goto handleError;
+			if (lines->length == 0) goto handle_error;
 			size_t index = lines->length - 1;
 			if (cmd.args) {
 				index = *((size_t *) cmd.args);
 				free(cmd.args);
 			}
-			if (index >= lines->length) goto handleError;
-			char *line = blot_LinkedList_removeAt(lines, index);
+			if (index >= lines->length) goto handle_error;
+			char *line = blot_LinkedList_remove_at(lines, index);
 			puts(line); free(line);
 		} break;
 
@@ -236,14 +236,14 @@ int main(int argc, char **argv) {
 				count = *((size_t *) cmd.args);
 				free(cmd.args);
 			}
-			if (count > lines->length) goto handleError;
+			if (count > lines->length) goto handle_error;
 			for (size_t i = 0; i < count; ++i) {
-				char *line = blot_LinkedList_removeAt(lines, lines->length-1);
+				char *line = blot_LinkedList_remove_at(lines, lines->length-1);
 				puts(line); free(line);
 			}
 		} break;
 
-		case INVALID: goto handleError;
+		case INVALID: goto handle_error;
 	}
 
 
@@ -257,13 +257,13 @@ int main(int argc, char **argv) {
 	}
 
 
-	int exitCode = EXIT_SUCCESS;
+	int exit_code = EXIT_SUCCESS;
 	goto cleanup;
 
-	handleError:;
+	handle_error:;
 	if (errno) perror(NULL);
 	else fputs("Operation failed\n", stderr);
-	exitCode = EXIT_FAILURE;
+	exit_code = EXIT_FAILURE;
 
 	cleanup:;
 	if (output) fclose(output);
@@ -273,5 +273,5 @@ int main(int argc, char **argv) {
 		blot_LinkedList_free(lines);
 	}
 
-	return exitCode;
+	return exit_code;
 }

@@ -27,11 +27,11 @@ void blot_LinkedList_add(struct blot_LinkedList *this, void *val) {
 		*this->head = (Node) { val };
 	}
 	else {
-		Node *newNode
+		Node *new_node
 				= this->tail->next
-				= malloc(sizeof (*newNode));
-		*newNode = (Node) { val, this->tail, NULL };
-		this->tail = newNode;
+				= malloc(sizeof (*new_node));
+		*new_node = (Node) { val, this->tail, NULL };
+		this->tail = new_node;
 	}
 	++this->length;
 }
@@ -53,13 +53,13 @@ void blot_LinkedList_insert(
 		Node *node = this->head;
 		for (size_t i = 0; i < index; ++i, node = node->next);
 		// insert new node
-		Node *newNode = malloc(sizeof (*newNode));
-		*newNode = (Node) { val, node->prev, node };
+		Node *new_node = malloc(sizeof (*new_node));
+		*new_node = (Node) { val, node->prev, node };
 		if (node == this->head)
-			this->head = newNode;
+			this->head = new_node;
 		else
-			node->prev->next = newNode;
-		node->prev = newNode;
+			node->prev->next = new_node;
+		node->prev = new_node;
 		++this->length;
 	}
 }
@@ -112,7 +112,7 @@ bool blot_LinkedList_remove(
 }
 
 
-void * blot_LinkedList_removeAt(struct blot_LinkedList *this, size_t index) {
+void * blot_LinkedList_remove_at(struct blot_LinkedList *this, size_t index) {
 	typedef struct blot_LinkedListNode Node;
 	if (this == NULL || this->length == 0 || index >= this->length)
 		return NULL;
@@ -165,9 +165,9 @@ bool blot_LinkedList_contains(
 void blot_LinkedList_free(struct blot_LinkedList *this) {
 	if (this == NULL) return;
 	for (struct blot_LinkedListNode *node = this->head; node != NULL; ) {
-		struct blot_LinkedListNode *nextNode = node->next;
+		struct blot_LinkedListNode *next_node = node->next;
 		free(node);
-		node = nextNode;
+		node = next_node;
 	}
 	free(this);
 }

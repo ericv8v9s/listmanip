@@ -43,7 +43,7 @@ bool blot_LinkedList_remove(
 		bool (*)(void *, void *));
 
 /** Removes and returns the element at the specified index. */
-void * blot_LinkedList_removeAt(struct blot_LinkedList *, size_t);
+void * blot_LinkedList_remove_at(struct blot_LinkedList *, size_t);
 
 /**
  * Checks if the LinkedList contains an item using the specified function.
